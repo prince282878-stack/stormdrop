@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>StormDrop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+html,body{margin:0;padding:0;background:#0f1220;overflow:hidden;font-family:system-ui}
+#ui{position:fixed;top:10px;left:10px;color:#fff;font-weight:700}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;
+background:radial-gradient(60% 60% at 50% 40%, #2aa9ff44, #000)}
+button{padding:14px 22px;font-size:18px;border-radius:12px;border:0;background:#2aa9ff;color:#001}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">HP: <span id="hp">100</span></div>
+<div id="start"><button onclick="start()">TAP TO START</button></div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+addEventListener('resize',resize); resize();
+
+let scene="title";
+let hp=100;
+let bullets=[], enemies=[], particles=[];
+let px=innerWidth/2, py=innerHeight*0.8;
+
+function start(){
+  document.getElementById('start').style.display='none';
+  reset(); scene="game";
+}
+
+function reset(){
+  hp=100; bullets=[]; enemies=[]; particles=[];
+  for(let i=0;i<8;i++) spawnEnemy();
+}
+
+function spawnEnemy(){
+  enemies.push({x:Math.random()*canvas.width,y:-50,r:22,vy:1+Math.random()*1.5});
+}
+
+addEventListener('pointerdown',e=>{
+  if(scene!=="game") return;
+  bullets.push({x:px,y:py,v:-12});
+});
+
+addEventListener('pointermove',e=>{ px=e.clientX; });
+
+function drawGlow(x,y,r,c){
+  const g=ctx.createRadialGradient(x,y,2,x,y,r);
+  g.addColorStop(0,c); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const bg=ctx.createLinearGradient(0,0,0,canvas.height);
+  bg.addColorStop(0,'#0b1028'); bg.addColorStop(1,'#020410');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  if(scene==="game"){
+    drawGlow(px,py,60,'#2aa9ff55');
+    ctx.fillStyle='#2aa9ff';
+    ctx.fillRect(px-18,py-18,36,36);
+
+    bullets.forEach(b=>{ b.y+=b.v; drawGlow(b.x,b.y,18,'#ffe45a55');
+      ctx.fillStyle='#ffe45a'; ctx.fillRect(b.x-3,b.y-10,6,20); });
+    bullets=bullets.filter(b=>b.y>-20);
+
+    enemies.forEach(e=>{
+      e.y+=e.vy;
+      drawGlow(e.x,e.y,40,'#ff5a5a55');
+      ctx.fillStyle='#ff5a5a'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill();
+      if(Math.hypot(e.x-px,e.y-py)<e.r+18){ hp--; }
+    });
+
+    enemies.forEach((e,ei)=>{
+      bullets.forEach((b,bi)=>{
+        if(Math.hypot(e.x-b.x,e.y-b.y)<e.r){
+          enemies.splice(ei,1); bullets.splice(bi,1);
+          for(let i=0;i<18;i++) particles.push({x:e.x,y:e.y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,t:30});
+          spawnEnemy();
+        }
+      });
+    });
+
+    particles.forEach(p=>{p.x+=p.vx; p.y+=p.vy; p.t--;
+      ctx.fillStyle='#fff'; ctx.fillRect(p.x,p.y,2,2);});
+    particles=particles.filter(p=>p.t>0);
+
+    document.getElementById('hp').textContent=hp;
+    if(hp<=0){ scene="over"; }
+  }
+
+  if(scene==="over"){
+    ctx.fillStyle='#0008'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#fff'; ctx.font='700 32px system-ui';
+    ctx.fillText('GAME OVER', canvas.width/2-90, canvas.height/2);
+  }
+}
+loop();
+</script>
+</body>
+</html>
